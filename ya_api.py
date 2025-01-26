@@ -9,27 +9,40 @@ class YANDEXApi:
     YA_API_BASE_URL = 'https://cloud-api.yandex.net/v1/disk/resources'
 
     def __init__(self, token):
+        """
+
+        :param token: Токен для доступа к Yandex
+        """
         self.token = token
 
     def _get_common_params(self):
+
         return {
             'Authorization': f'OAuth {self.token}',
         }
 
     def _get_files(self, user_id):
+        """
+
+        :param user_id: ID страницы в VK - используется как название папки для сохранения фотографий
+        :return: Список файлов в папке user_id
+        """
         name_lst = []
         headers = self._get_common_params()
         params = {'path': user_id, 'limit': 100}
         url = f"{self.YA_API_BASE_URL}"
-        try:
-            files = requests.get(url, headers=headers, params=params).json()['_embedded']['items']
-            for item in files:
-                name_lst.append(item['name'])
-        except Exception:
-            pass
+        files = requests.get(url, headers=headers, params=params).json()['_embedded']['items']
+        for item in files:
+            name_lst.append(item['name'])
         return name_lst
 
     def create_file(self, photos, user_id, count: int):
+        """
+
+        :param photos: Словарь, где ключи - наименование файлов, а значения URL ссылка на картинку
+        :param user_id: ID страницы в VK - используется как название папки для сохранения фотографий
+        :param count: Количество сохраняемых фотографий
+        """
         files = self._get_files(user_id)
         headers = self._get_common_params()
         url = f"{self.YA_API_BASE_URL}/upload"

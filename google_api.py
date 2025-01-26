@@ -17,7 +17,11 @@ class GDrive:
         self.access_token = gauth.attr['credentials'].access_token
 
     def _create_folder(self, folder_name, root_folder_id = 'root'):
+        """
 
+        :param folder_name: Имя папки
+        :param root_folder_id: ID корневой папки каталога
+        """
         file_metadata = {
             'title': folder_name,
             'parents': [root_folder_id],
@@ -32,7 +36,12 @@ class GDrive:
             return 'Не удалось создать папку'
 
     def _check_folder_exists(self, item_name, folder_id = 'root'):
+        """
 
+        :param item_name: Имя файла.паки для проверки
+        :param folder_id: ID корневой папки каталога
+        :return: NONE если папки не существует и ID папки, если она есть
+        """
         lst =self.drive.ListFile({'q': f"'{folder_id}' in parents and trashed=false"}).GetList()
         for item in lst:
             if item['title'] == str(item_name):
@@ -41,7 +50,12 @@ class GDrive:
                 continue
 
     def create_file(self, photos, user_id, count):
+        """
 
+        :param photos: Словарь, где ключи - наименование файлов, а значения URL ссылка на картинку
+        :param user_id: ID страницы в VK - используется как название папки для сохранения фотографий
+        :param count: Количество сохраняемых фотографий
+        """
         folder_id = self._check_folder_exists(user_id)
         if folder_id is None:
             self._create_folder(user_id)
