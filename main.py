@@ -1,4 +1,5 @@
 import json
+import logging
 
 from vk_api import VKApi
 from ya_api import YANDEXApi
@@ -7,12 +8,15 @@ from settings import VKTOKEN
 from google_api import GDrive
 from collections import defaultdict
 
-def convert_output(photos: dict):
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s\n')
+
+def convert_output(photos: dict[str, tuple[int, str, str]]) -> dict[str, str]:
     """
+    Конвертирует словарь фотографий в словарь с уникальными именами файлов и URL.
 
     :param photos: Словарь, где ключи - ссылка URL, а значения - кортеж значений (Количество лайков, размер фото,
             дата добавления)
-    :return: name_photo_dict: Словарь, в котором ключи Наименование файла,а значения URL картинки
+    :return: name_photo_dict: Словарь, в котором ключи Наименование файла, а значения URL картинки
     """
     state_dict = defaultdict(lambda: {'count': 0, 'first_date': None})
     name_photo_dict = {}
@@ -41,12 +45,13 @@ def convert_output(photos: dict):
 
     with open('result.json', 'w') as f:
         json.dump(json_list, f, indent=4)
-        f.close()
+    logging.info('\x1b[32mJSON файл result.json создан.\x1b[31m')
 
     return name_photo_dict
 
-def extract_yandex(photo_dict, user_id: int, count: int):
+def extract_yandex(photo_dict: dict[str, tuple[int, str, str]], user_id: int, count: int):
     """
+    Сохраняет фотографии на Яндекс.Диск.
 
     :param photo_dict: Словарь, где ключи - ссылка URL, а значения - кортеж значений (Количество лайков, размер фото,
             дата добавления)
@@ -55,10 +60,13 @@ def extract_yandex(photo_dict, user_id: int, count: int):
     """
 
     yandex = YANDEXApi(YATOKEN)
-    yandex.create_file(convert_output(photo_dict), user_id, count)
+    files = convert_output(photo_dict)
+    yandex.create_file(files, user_id, count)
+    logging.info('\x1b[32mФотографии успешно загружены на Яндекс.Диск.\x1b[31m')
 
-def extract_google(photo_dict, user_id, count: int):
+def extract_google(photo_dict: dict[str, tuple[int, str, str]], user_id: int, count: int):
     """
+    Сохраняет фотографии на Google Drive
 
     :param photo_dict: Словарь, где ключи - ссылка URL, а значения - кортеж значений (Количество лайков, размер фото,
             дата добавления)
@@ -67,25 +75,35 @@ def extract_google(photo_dict, user_id, count: int):
     """
 
     gd = GDrive()
-    gd.create_file(convert_output(photo_dict), user_id, count)
+    files = convert_output(photo_dict)
+    gd.create_file(files, user_id, count)
+    logging.info('\x1b[32mФотографии успешно загружены на Google Drive.\x1b[31m')
 
 if __name__ == '__main__':
-    vk_user_id = input('Введите VK ID: ')
-    vk = VKApi(VKTOKEN)
+    try:
+        vk_user_id = int(input('Введите VK ID: ').strip())
+        album_id = input('Введите откуда будем получать фотографии (Профиль или Все): ').strip().capitalize()
+        count = input('Введите количество фотографий которые планируем сохранить: ').strip()
 
-    album_id = input('Введите откуда будем получать фотографии (Профиль или Все): ')
-    count = input('Введите количество фотографий которые планируем сохранить: ')
-    if album_id == 'Профиль' or album_id == 'Все':
+        if not count.isdigit():
+            logging.error('Количество должно быть числом!')
+            exit()
+
+        count = int(count)
+        if album_id not in {'Профиль', 'Все'}:
+            logging.error('Неверное место получения фотографий!')
+            exit()
+        vk = VKApi(VKTOKEN)
         photo_dict = vk.get_photos(vk_user_id, int(count), album_id)
-        print(f'{count} фотографий получено со страницы профиля!')
-    else:
-        print('Место получения фотографий введено неверно!!!')
+        logging.info(f'\x1b[32m{count} фотографий получено со страницы профиля.\x1b[31m')
 
-    disk = input('Введите платформу на которую будем сохранять фотографии (Yandex или Google): ')
-    match disk:
-        case 'Yandex':
-            extract_yandex(photo_dict, vk_user_id, int(count))
-        case 'Google':
-            extract_google(photo_dict, vk_user_id, int(count))
-        case _:
-            print('Платформа не определена!')
+        disk = input('Введите платформу на которую будем сохранять фотографии (Yandex или Google): ').strip().capitalize()
+        match disk:
+            case 'Yandex':
+                extract_yandex(photo_dict, vk_user_id, count)
+            case 'Google':
+                extract_google(photo_dict, vk_user_id, count)
+            case _:
+                logging.error('Платформа не определена!')
+    except Exception as e:
+        logging.exception(f'Произошла ошибка: {e}')

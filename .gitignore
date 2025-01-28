@@ -8,5 +8,4 @@ out
 gen
 .venv
 client_secrets.json
-result.json
 settings.py
